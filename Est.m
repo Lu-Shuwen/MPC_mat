@@ -1,7 +1,6 @@
-function [PhiExp,PhiPhiTExp,wPhiTExp,Q] = Est(N,H)
+function [PhiExp,PhiPhiTExp,wPhiTExp,Q] = Est(N,H,ww)
 % Estimate the expectation of phi(w)phi(w)^T and wphi(w)^T from data
 
-load('disturbancedata.mat','ww')
 
 % Initialize
 

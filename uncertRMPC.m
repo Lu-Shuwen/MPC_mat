@@ -1,4 +1,4 @@
-function [gammaMin,gammaMax] = uncertRMPC(N,H)
+function [gammaMin,gammaMax] = uncertRMPC(N,H,ww)
 % Robust Model Predictive Control (RMPC) or in reference [15]
 % Fisrt step: bounding the uncertainty or disturbance data (47)
 % N is the no. of multi-samples of disturbance
@@ -7,8 +7,6 @@ function [gammaMin,gammaMax] = uncertRMPC(N,H)
 % Nt is different for each t-th row block of constraints in (49)
 % Since epsilon_t and beta_t are the same for each t,
 % they share the same gammaMin and gammaMax for simplicity
-
-load('disturbancedata.mat','ww');
 
 % Hyper-rectangular uncertainty boundary of Wt(D) in equ (47)
 W = zeros(H,N);         
