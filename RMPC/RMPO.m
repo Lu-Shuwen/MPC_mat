@@ -13,9 +13,9 @@ H = 5;
 
 load('disturbancedata.mat','ww');
 
-[~,PhiPhiTExp,wPhiTExp,~] = Est(N,H,ww(1:H*N));
+[~,PhiPhiTExp,wPhiTExp,W] = Est(N,H,ww(1:H*N));
 [AA,BBu,BBw,QQ,RR,FF,ff,GG,gg] = model(H);
-[gammaMin,gammaMax] = uncertRMPC(N,H,ww);
+[gammaMin,gammaMax] = uncertRMPC(N,H,W);
 
 x0 = [0.2 1 -0.1 0.1]';
 
@@ -30,7 +30,7 @@ uu = zeros(1,T);
 xx = zeros(4,T);
 
 for k = 1:T
-    [h,M,u,x] = RMPC(H,x0,ww(2000+k-1),...                     % Initial conditions
+    [h,M,u,x] = RMPC(H,x0,ww(2000+k-1),...          % Initial conditions
                   PhiPhiTExp,wPhiTExp,...           % Estimate expectations
                   AA,BBu,BBw,QQ,RR,FF,ff,GG,gg,...  % System model
                   gammaMin,gammaMax);               % uncertainty
@@ -40,6 +40,8 @@ for k = 1:T
     xx(:,k) = x0';
 end
 
+% Save data
+save('RMPC.mat','uu','xx');
 % Plot states and control variables
 time = Ts:Ts:t;
 figure(1)

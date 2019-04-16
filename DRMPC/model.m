@@ -4,6 +4,23 @@ function [AA,BBu,BBw,QQ,RR,FF,ff,GG,gg] = model(H)
 % This function builds the model of the two-mass-spring system
 % and also the contraints matrices
 
+
+% clc;
+% close all; 
+% clear;
+% 
+% dbstop if error
+% 
+% % Nt is No. of samples for each row block, Nt = N
+% Nt = 300;
+% Nc = 59;
+% % Control horizon
+% H = 5;
+% nu = 0.05;
+% 
+% load('disturbancedata.mat','ww');
+
+
 % Parameters
 K  = 1;
 m1 = 0.5;

@@ -10,19 +10,21 @@ function [h,M,u,x] = RMPC(H,x0,w,...
 h  = sdpvar(H,1);
 M  = sdpvar(H,H);
 Lambda = sdpvar(4*H,6*H);           % dual variable in matrix form
+for i = 1:H
+    M(i,i:end) = 0;
+end
 
-% General polyhedral uncertainty set
-% Uncertainty parameter u is lifted uncertainty w_hat in equ (39)
-% Input constraints equ (13) in ref [31] and state constraints equ (49)
-W = blkdiag(kron([1;-1],eye(H)),kron([1;-1],eye(H)));
-v = [ones(2*H,1);gammaMax;-gammaMin];
-
-% max(c'* w_hat) <= b
+% lifted uncertainty w_hat in equ (39) satisfying max(c'* w_hat) <= b
 c = [FF * [BBu*M  BBw]
      GG * [M zeros(H)]];
 b = [ff - FF * (AA*x0 + BBu*h)
      gg - GG * h];
+% General polyhedral uncertainty set
+%  |phi(w)| <= 1 and gammaMin <= w <= gammaMax
+W = blkdiag(kron([1;-1],eye(H)),kron([1;-1],eye(H)));
+v = [ones(2*H,1);gammaMax;-gammaMin];
 
+% Input constraints equ (13) and state constraints equ (49) in duality
 Cons = [Lambda'*v <= b, Lambda >= 0, Lambda'*W == c];
         
 % Objective function J(M,h) equ (16)

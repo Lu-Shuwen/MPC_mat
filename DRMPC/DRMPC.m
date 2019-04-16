@@ -1,67 +1,54 @@
-% function [h,M,u,x] = DRMPC(H,x0,w,...
-%                   PhiPhiTExp,wPhiTExp,Q,...
-%                   AA,BBu,BBw,QQ,RR,FF,ff,GG,gg,...
-%                   alpha,SV,theta_tilde,w_hat)
+function [h,M,u,x] = DRMPC(H,x0,w,...
+                  PhiPhiTExp,wPhiTExp,Q,...
+                  AA,BBu,BBw,QQ,RR,FF,ff,GG,gg,...
+                  alpha,SV,theta_tilde,W_SV_hat)
 % Data-Dirven Model Predictive Control (DRMPC)
 % Second step: Solve DRMPC problem with robust constraints solved in equ (47)
 % H is the control horizon
 
-clc;
-close all; 
-clear;
-dbstop if error
-% Nt is No. of samples for each row block, Nt = N
-Nt = 300;
-Nc = 59;
-% Control horizon
-H = 5;
-nu = 0.05;
-load('disturbancedata.mat','ww');
-[~,PhiPhiTExp,wPhiTExp,Q,L] = Est(Nt,Nc,H,ww);
-[AA,BBu,BBw,QQ,RR,FF,ff,GG,gg] = model(H);
-[alpha,SV,theta_tilde,W_SV_hat] = uncertDRMPC(Nt,Nc,H,ww,Q,L,nu);
-x0 = [0.2 1 -0.1 0.1]';
-w = ww(2000);
 
 len = length(SV);
-% Robust counterpart derivation (6800 slides)
+
+% control variables in eqn (16)
 h  = sdpvar(H,1);
 M  = sdpvar(H,H);
-
-% for i = 1:H
-%     M(i,i:end) = 0;
-% end
-
-lambda = sdpvar(2*H,1);
-Heta  = sdpvar(6*H,1);
-Lambda = sdpvar(2*H,len,6*H);           % dual variable in matrix form
-Mu = sdpvar(2*H,len,6*H);
-
-% Uncertainty parameter u is lifted uncertainty w_hat in equ (39)
-W = [kron([1; -1],eye(H)),zeros(2*H,H)];
-V = ones(2*H,1);
- 
-% Input constraints equ (13) in ref [31] and state constraints equ (49)
-% max(c* w_hat) <= b
-
-c = [FF * [BBu*M BBw];
-     GG * [M zeros(H)] ];
-b = [ff - FF * (AA*x0 + BBu*h)
-     gg - GG * h];
-
-Cons = [];
-for k = 1:length(b)
-    Cons = [Cons,trace((Mu(:,:,k)-Lambda(:,:,k))'*Q*W_SV_hat)+Heta(k)*theta_tilde...
-                + V'* lambda       <= b(k);
-        sum(Q'*(Lambda(:,:,k)-Mu(:,:,k)),2) + W'*lambda  == c(k,:)',...
-        Lambda(:,:,k)+ Mu(:,:,k) == Heta(k)*ones(2*H,1)*alpha(SV)'];
+for i = 1:H
+    M(i,i:end) = 0;
 end
-Cons = [Cons, lambda(:) >= 0, Lambda(:) >= 0, Mu(:) >= 0, Heta(:) >= 0];
-    
+
 % Objective function J(M,h) equ (16)
 Obj = (h'*(RR+BBu'*QQ*BBu)*h + ...
           trace((RR+BBu'*QQ*BBu)*M*PhiPhiTExp*M') + ...
           2*h'*BBu'*QQ*AA*x0 + 2*trace(M'*BBu'*QQ*BBw*wPhiTExp))
+      
+% dual variables in matrix form for state constraints
+Heta  = sdpvar(4*H,1);
+Lambda = sdpvar(2*H,len,4*H);           
+Mu = sdpvar(2*H,len,4*H);
+% dual variables in matrix form for input constraints
+Z = sdpvar(2*H,2*H,'full');
+
+Cons = [];
+
+% lifted uncertainty w_hat in equ (39) satisfying max(c1* w_hat) <= b1
+c1 = FF * [BBu*M BBw];
+b1 = ff - FF * (AA*x0 + BBu*h);
+% State constraints equ (49)
+for k = 1:length(b1)
+    Cons = [Cons,trace((Mu(:,:,k)-Lambda(:,:,k))'*Q*W_SV_hat)+Heta(k)*theta_tilde<= b1(k),...
+        sum(Q'*(Lambda(:,:,k)-Mu(:,:,k)),2)  == -c1(k,:)',...
+        Lambda(:,:,k)+ Mu(:,:,k) == Heta(k)*ones(2*H,1)*alpha(SV)'];
+end
+
+% max(c2* phi(W)) <= b2
+c2 = GG *  M;
+b2 = gg - GG * h;
+% where phi(W) belongs to a polytopic uncertainty set, |phi(w)| <= 1
+W = kron([1; -1],eye(H));
+V = ones(2*H,1);
+% Input constraints equ (13) robust counterpart derivation (6800 slides)
+Cons = [Cons, Z'*V <= b2, Z'*W == c2,...
+         Z(:) >= 0, Lambda(:) >= 0, Mu(:) >= 0, Heta(:) >= 0];
     
 
 % Solve the problem
